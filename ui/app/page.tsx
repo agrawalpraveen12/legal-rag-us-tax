@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 
@@ -65,7 +65,7 @@ export default function Home() {
     const timeoutId = setTimeout(() => controller.abort(), 50000)
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/answer', {
+      const res = await fetch('http://127.0.0.1:8001/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
@@ -82,7 +82,7 @@ export default function Home() {
     } catch (err: unknown) {
       clearTimeout(timeoutId)
       if (err instanceof Error && err.name === 'AbortError') {
-        setError('Request timed out. Groq API rate limited — please wait 60 seconds and retry.')
+        setError('Request timed out. Groq API rate limited â€” please wait 60 seconds and retry.')
       } else {
         setError(err instanceof Error ? err.message : 'Connection failed.')
       }
@@ -116,13 +116,13 @@ export default function Home() {
               background: '#C8A951', display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontSize: '24px', flexShrink: 0,
               border: '3px solid #fff'
-            }}>⚖</div>
+            }}>âš–</div>
             <div>
               <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#FFFFFF', letterSpacing: '0.5px' }}>
                 Legal RAG System
               </div>
               <div style={{ fontSize: '12px', color: '#C8A951', letterSpacing: '1px', marginTop: '2px' }}>
-                US TAX LAW RESEARCH ASSISTANT &nbsp;·&nbsp; AI-POWERED CITATION ENGINE
+                US TAX LAW RESEARCH ASSISTANT &nbsp;Â·&nbsp; AI-POWERED CITATION ENGINE
               </div>
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', gap: '8px' }}>
               <span style={{ background: '#1B5E20', color: '#fff', padding: '3px 10px', borderRadius: '3px', fontSize: '11px', fontFamily: 'monospace' }}>
-                ● ES CONNECTED
+                â— ES CONNECTED
               </span>
               <span style={{ background: '#1565C0', color: '#fff', padding: '3px 10px', borderRadius: '3px', fontSize: '11px', fontFamily: 'monospace' }}>
                 3,497 CHUNKS INDEXED
@@ -138,7 +138,7 @@ export default function Home() {
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <span style={{ background: '#33333380', color: '#ccc', padding: '3px 10px', borderRadius: '3px', fontSize: '11px', fontFamily: 'monospace' }}>
-                101 DOCUMENTS · 4 PILLARS
+                101 DOCUMENTS Â· 4 PILLARS
               </span>
             </div>
           </div>
@@ -227,10 +227,10 @@ export default function Home() {
               </div>
               <div style={{ padding: '14px' }}>
                 {[
-                  { type: 'act', label: 'IRC Statutes', count: 30, icon: '§' },
-                  { type: 'judgment', label: 'Court Judgments', count: 30, icon: '⚖' },
-                  { type: 'pov', label: 'POV / Commentary', count: 30, icon: '📋' },
-                  { type: 'tax', label: 'IRS Publications', count: 10, icon: '📄' },
+                  { type: 'act', label: 'IRC Statutes', count: 30, icon: 'Â§' },
+                  { type: 'judgment', label: 'Court Judgments', count: 30, icon: 'âš–' },
+                  { type: 'pov', label: 'POV / Commentary', count: 30, icon: 'ðŸ“‹' },
+                  { type: 'tax', label: 'IRS Publications', count: 10, icon: 'ðŸ“„' },
                 ].map((item) => {
                   const cfg = DOC_TYPE_CONFIG[item.type]
                   return (
@@ -285,7 +285,7 @@ export default function Home() {
             {/* IRC Statutes Page */}
             {activeNav === 'irc' && (
               <div style={{ background: '#fff', border: '1px solid #CBD5E0', borderTop: '3px solid #1565C0', padding: '24px' }}>
-                <h2 style={{ color: '#0A3055', fontSize: '16px', marginBottom: '16px', fontFamily: 'Georgia, serif' }}>IRC Statutes — Internal Revenue Code</h2>
+                <h2 style={{ color: '#0A3055', fontSize: '16px', marginBottom: '16px', fontFamily: 'Georgia, serif' }}>IRC Statutes â€” Internal Revenue Code</h2>
                 <p style={{ color: '#555', fontSize: '13px', lineHeight: '1.8', fontFamily: 'sans-serif', marginBottom: '16px' }}>
                   This system indexes <strong>30 IRC sections</strong> from Title 26 of the United States Code, sourced from GovInfo.gov.
                 </p>
@@ -299,29 +299,29 @@ export default function Home() {
                   </thead>
                   <tbody>
                     {[
-                      ['§61',   'Gross Income Defined',          'Income Definition'],
-                      ['§62',   'Adjusted Gross Income',          'Income Definition'],
-                      ['§101',  'Life Insurance Exclusions',      'Exclusions'],
-                      ['§102',  'Gifts and Inheritances',         'Exclusions'],
-                      ['§121',  'Home Sale Exclusion',            'Exclusions'],
-                      ['§162',  'Trade or Business Expenses',     'Deductions'],
-                      ['§163',  'Interest Deduction',             'Deductions'],
-                      ['§165',  'Losses',                         'Deductions'],
-                      ['§167',  'Depreciation',                   'Deductions'],
-                      ['§170',  'Charitable Contributions',       'Deductions'],
-                      ['§183',  'Hobby Loss Rules',               'Deductions'],
-                      ['§199A', 'Qualified Business Income',      'Deductions'],
-                      ['§263',  'Capital Expenditures',           'Deductions'],
-                      ['§351',  'Transfer to Corporation',        'Corporate'],
-                      ['§368',  'Corporate Reorganizations',      'Corporate'],
-                      ['§401',  'Qualified Pension Plans',        'Retirement'],
-                      ['§408',  'Individual Retirement Accounts', 'Retirement'],
-                      ['§501',  'Tax-Exempt Organizations',       'Exempt Orgs'],
-                      ['§1001', 'Gain or Loss on Disposition',    'Capital Gains'],
-                      ['§1031', 'Like-Kind Exchanges',            'Capital Gains'],
-                      ['§1221', 'Capital Asset Defined',          'Capital Gains'],
-                      ['§6662', 'Accuracy-Related Penalty',       'Penalties'],
-                      ['§7201', 'Tax Evasion',                    'Criminal'],
+                      ['Â§61',   'Gross Income Defined',          'Income Definition'],
+                      ['Â§62',   'Adjusted Gross Income',          'Income Definition'],
+                      ['Â§101',  'Life Insurance Exclusions',      'Exclusions'],
+                      ['Â§102',  'Gifts and Inheritances',         'Exclusions'],
+                      ['Â§121',  'Home Sale Exclusion',            'Exclusions'],
+                      ['Â§162',  'Trade or Business Expenses',     'Deductions'],
+                      ['Â§163',  'Interest Deduction',             'Deductions'],
+                      ['Â§165',  'Losses',                         'Deductions'],
+                      ['Â§167',  'Depreciation',                   'Deductions'],
+                      ['Â§170',  'Charitable Contributions',       'Deductions'],
+                      ['Â§183',  'Hobby Loss Rules',               'Deductions'],
+                      ['Â§199A', 'Qualified Business Income',      'Deductions'],
+                      ['Â§263',  'Capital Expenditures',           'Deductions'],
+                      ['Â§351',  'Transfer to Corporation',        'Corporate'],
+                      ['Â§368',  'Corporate Reorganizations',      'Corporate'],
+                      ['Â§401',  'Qualified Pension Plans',        'Retirement'],
+                      ['Â§408',  'Individual Retirement Accounts', 'Retirement'],
+                      ['Â§501',  'Tax-Exempt Organizations',       'Exempt Orgs'],
+                      ['Â§1001', 'Gain or Loss on Disposition',    'Capital Gains'],
+                      ['Â§1031', 'Like-Kind Exchanges',            'Capital Gains'],
+                      ['Â§1221', 'Capital Asset Defined',          'Capital Gains'],
+                      ['Â§6662', 'Accuracy-Related Penalty',       'Penalties'],
+                      ['Â§7201', 'Tax Evasion',                    'Criminal'],
                     ].map(([sec, title, topic], i) => (
                       <tr key={i}
                         style={{ background: i%2===0?'#F8F9FA':'#fff', borderBottom: '1px solid #E8EDF2', cursor: 'pointer' }}
@@ -342,7 +342,7 @@ export default function Home() {
             {/* Case Law Page */}
             {activeNav === 'cases' && (
               <div style={{ background: '#fff', border: '1px solid #CBD5E0', borderTop: '3px solid #4A148C', padding: '24px' }}>
-                <h2 style={{ color: '#0A3055', fontSize: '16px', marginBottom: '16px', fontFamily: 'Georgia, serif' }}>Case Law — Landmark Tax Court Judgments</h2>
+                <h2 style={{ color: '#0A3055', fontSize: '16px', marginBottom: '16px', fontFamily: 'Georgia, serif' }}>Case Law â€” Landmark Tax Court Judgments</h2>
                 <p style={{ color: '#555', fontSize: '13px', lineHeight: '1.8', fontFamily: 'sans-serif', marginBottom: '16px' }}>
                   30 landmark US federal court decisions sourced from CourtListener API and Justia.
                 </p>
@@ -357,21 +357,21 @@ export default function Home() {
                   </thead>
                   <tbody>
                     {[
-                      ['Commissioner v. Glenshaw Glass', '1955', '§61',   'Punitive damages as gross income'],
-                      ['Welch v. Helvering',             '1933', '§162',  'Ordinary and necessary expenses'],
-                      ['Bob Jones Univ. v. US',          '1983', '§501',  'Public policy and tax exemption'],
-                      ['Cheek v. United States',         '1991', '§7201', 'Willfulness in tax evasion'],
-                      ['Starker v. United States',       '1979', '§1031', 'Like-kind exchange timing'],
-                      ['INDOPCO v. Commissioner',        '1992', '§162',  'Capital vs deductible expenses'],
-                      ['Crane v. Commissioner',          '1947', '§1001', 'Liabilities in basis calculation'],
-                      ['Commissioner v. Tufts',          '1983', '§1001', 'Nonrecourse liability on sale'],
-                      ['Arkansas Best Corp. v. Comm.',   '1988', '§1221', 'Capital asset definition'],
-                      ['Cottage Savings v. Comm.',       '1991', '§1001', 'Realization of gain or loss'],
-                      ['Gregory v. Helvering',           '1935', '§368',  'Substance over form doctrine'],
-                      ['Hernandez v. Commissioner',      '1989', '§170',  'Charitable contribution quid pro quo'],
-                      ['Old Colony Trust v. Comm.',      '1929', '§61',   'Payment by third party as income'],
-                      ['Cesarini v. United States',      '1969', '§61',   'Found money as gross income'],
-                      ['Commissioner v. Duberstein',     '1960', '§102',  'Gift vs income distinction'],
+                      ['Commissioner v. Glenshaw Glass', '1955', 'Â§61',   'Punitive damages as gross income'],
+                      ['Welch v. Helvering',             '1933', 'Â§162',  'Ordinary and necessary expenses'],
+                      ['Bob Jones Univ. v. US',          '1983', 'Â§501',  'Public policy and tax exemption'],
+                      ['Cheek v. United States',         '1991', 'Â§7201', 'Willfulness in tax evasion'],
+                      ['Starker v. United States',       '1979', 'Â§1031', 'Like-kind exchange timing'],
+                      ['INDOPCO v. Commissioner',        '1992', 'Â§162',  'Capital vs deductible expenses'],
+                      ['Crane v. Commissioner',          '1947', 'Â§1001', 'Liabilities in basis calculation'],
+                      ['Commissioner v. Tufts',          '1983', 'Â§1001', 'Nonrecourse liability on sale'],
+                      ['Arkansas Best Corp. v. Comm.',   '1988', 'Â§1221', 'Capital asset definition'],
+                      ['Cottage Savings v. Comm.',       '1991', 'Â§1001', 'Realization of gain or loss'],
+                      ['Gregory v. Helvering',           '1935', 'Â§368',  'Substance over form doctrine'],
+                      ['Hernandez v. Commissioner',      '1989', 'Â§170',  'Charitable contribution quid pro quo'],
+                      ['Old Colony Trust v. Comm.',      '1929', 'Â§61',   'Payment by third party as income'],
+                      ['Cesarini v. United States',      '1969', 'Â§61',   'Found money as gross income'],
+                      ['Commissioner v. Duberstein',     '1960', 'Â§102',  'Gift vs income distinction'],
                     ].map(([case_, year, sec, issue], i) => (
                       <tr key={i}
                         style={{ background: i%2===0?'#F8F9FA':'#fff', borderBottom: '1px solid #E8EDF2', cursor: 'pointer' }}
@@ -491,7 +491,7 @@ export default function Home() {
             {error && (
               <div style={{ background: '#FFEBEE', border: '1px solid #C62828', borderLeft: '4px solid #C62828', padding: '12px 16px', marginBottom: '16px', fontFamily: 'sans-serif' }}>
                 <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#C62828', marginBottom: '4px' }}>
-                  ⚠ SYSTEM NOTICE
+                  âš  SYSTEM NOTICE
                 </div>
                 <div style={{ fontSize: '12px', color: '#B71C1C' }}>{error}</div>
                 {error.includes('rate limited') && (
@@ -505,7 +505,7 @@ export default function Home() {
             {/* Loading */}
             {loading && (
               <div style={{ background: '#fff', border: '1px solid #CBD5E0', borderTop: '3px solid #0A3055', padding: '40px', textAlign: 'center' }}>
-                <div style={{ fontSize: '32px', marginBottom: '16px' }}>⚖</div>
+                <div style={{ fontSize: '32px', marginBottom: '16px' }}>âš–</div>
                 <div style={{ fontSize: '14px', color: '#0A3055', fontWeight: 'bold', marginBottom: '8px', fontFamily: 'sans-serif' }}>
                   PROCESSING LEGAL QUERY
                 </div>
@@ -571,7 +571,7 @@ export default function Home() {
                     {result.is_refused ? (
                       <div style={{ background: '#FFF8E1', border: '1px solid #F9A825', borderLeft: '4px solid #F9A825', padding: '16px' }}>
                         <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#F57F17', marginBottom: '8px', fontFamily: 'sans-serif' }}>
-                          ⚠ INSUFFICIENT CONTEXT
+                          âš  INSUFFICIENT CONTEXT
                         </div>
                         <div style={{ fontSize: '13px', color: '#555', fontFamily: 'sans-serif' }}>
                           {result.answer}
@@ -614,7 +614,7 @@ export default function Home() {
                                   return (
                                     <tr key={i} style={{ background: i % 2 === 0 ? '#F8F9FA' : '#fff', borderBottom: '1px solid #E8EDF2' }}>
                                       <td style={{ padding: '8px 12px', color: '#888', fontSize: '11px' }}>{i + 1}</td>
-                                      <td style={{ padding: '8px 12px', color: '#0A3055', fontWeight: 'bold' }}>{c.doc_title || c.cited_title || c.doc_id || '—'}</td>
+                                      <td style={{ padding: '8px 12px', color: '#0A3055', fontWeight: 'bold' }}>{c.doc_title || c.cited_title || c.doc_id || 'â€”'}</td>
                                       <td style={{ padding: '8px 12px' }}>
                                         <span style={{
                                           fontSize: '10px', padding: '2px 6px', fontWeight: 'bold',
@@ -625,7 +625,7 @@ export default function Home() {
                                         </span>
                                       </td>
                                       <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: '11px', color: '#333' }}>p.{c.page_number}</td>
-                                      <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: '11px', color: '#1565C0' }}>{c.section_ref || '—'}</td>
+                                      <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: '11px', color: '#1565C0' }}>{c.section_ref || 'â€”'}</td>
                                     </tr>
                                   )
                                 })}
@@ -696,7 +696,7 @@ export default function Home() {
             {/* Empty state */}
             {!result && !loading && !error && (
               <div style={{ background: '#fff', border: '1px solid #CBD5E0', borderTop: '3px solid #0A3055', padding: '48px', textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚖</div>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>âš–</div>
                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#0A3055', marginBottom: '8px' }}>
                   US Tax Law Research System
                 </div>
@@ -734,10 +734,7 @@ export default function Home() {
       <footer style={{ background: '#0D2137', color: '#888', padding: '20px 0', marginTop: '40px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'sans-serif', fontSize: '11px' }}>
           <div>
-            Legal RAG System &nbsp;·&nbsp; US Tax Law Research &nbsp;·&nbsp; Built with Elasticsearch + Groq
-          </div>
-          <div style={{ color: '#555' }}>
-            ShortHills AI Assignment &nbsp;·&nbsp; 2024
+            Legal RAG System &nbsp;Â·&nbsp; US Tax Law Research &nbsp;Â·&nbsp; Built with Elasticsearch + Groq
           </div>
         </div>
       </footer>

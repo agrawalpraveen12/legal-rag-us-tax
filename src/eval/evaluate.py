@@ -11,6 +11,7 @@ import sys
 import json
 import time
 import argparse
+import gc
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -214,9 +215,20 @@ def run_evaluation():
                 "error": str(e)
             }
             
+        # Strip chunk text from record before storing (saves ~90% memory per record)
+        for cite in record.get("generated_citations", []):
+            cite.pop("text", None)
+
         processed_records.append(record)
         processed_ids.add(query_id)
-        
+
+        # Free large intermediates and run GC to prevent OOM on long runs
+        try:
+            del hybrid_chunks, reranked_chunks, hybrid_res, gen_res
+        except NameError:
+            pass
+        gc.collect()
+
         # Save Checkpoint
         if len(processed_records) % args.checkpoint_interval == 0 or len(processed_records) == len(df):
             print(f"\nSaving checkpoint ({len(processed_records)} queries processed)...")
