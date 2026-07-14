@@ -24,11 +24,34 @@ def _load_models_sync():
     print("[startup] All models ready.")
 
 
+def _auto_index_if_empty():
+    import subprocess
+    from elasticsearch import Elasticsearch, NotFoundError
+    es = Elasticsearch(os.getenv("ES_URL", "http://localhost:9200"))
+    try:
+        count = es.count(index="legal_rag")["count"]
+        if count == 0:
+            print("[startup] Index empty — running auto-indexing…")
+            subprocess.run([sys.executable, "src/index/es_setup.py"], check=True)
+            subprocess.run([sys.executable, "src/index/index_docs.py"], check=True)
+            print("[startup] Auto-indexing complete.")
+        else:
+            print(f"[startup] Index ready — {count} docs found.")
+    except NotFoundError:
+        print("[startup] Index not found — running auto-indexing…")
+        subprocess.run([sys.executable, "src/index/es_setup.py"], check=True)
+        subprocess.run([sys.executable, "src/index/index_docs.py"], check=True)
+        print("[startup] Auto-indexing complete.")
+    except Exception as exc:
+        print(f"[startup] Warning: could not check index ({exc}) — skipping auto-index.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import asyncio
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, _load_models_sync)
+    await loop.run_in_executor(None, _auto_index_if_empty)
     yield
 
 

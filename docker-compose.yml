@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
@@ -11,14 +12,45 @@ services:
       - "9200:9200"
     volumes:
       - es_data:/usr/share/elasticsearch/data
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.13.0
-    container_name: legal_rag_kibana
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: legal_rag_backend
     ports:
-      - "5601:5601"
+      - "8000:8000"
+    env_file: .env
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      # Override ES_URL so the backend reaches the ES container by service name
+      - ES_URL=http://elasticsearch:9200
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/api/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+      args:
+        # Baked into the Next.js bundle at image build time
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: legal_rag_frontend
+    ports:
+      - "3001:3001"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   es_data:

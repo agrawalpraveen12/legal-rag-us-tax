@@ -1,0 +1,35 @@
+# Version control
+.git/
+.gitignore
+
+# Secrets
+.env
+.env.local
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Node
+node_modules/
+ui/.next/
+ui/out/
+
+# Raw PDFs — large, not needed in image (processed/ is copied instead)
+data/raw/
+
+# Runtime outputs
+reports/eval_checkpoint.json
+reports/evaluation_results.json
+
+# Development / tooling
+.claude/
+notebooks/
+check_eval.py
+check_progress.py
+read_results2.py
+*.faiss
