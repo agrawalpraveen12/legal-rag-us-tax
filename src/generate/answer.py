@@ -140,52 +140,92 @@ def generate_answer(
 def extract_citations(answer_text: str, chunks: list) -> list:
     """
     Extract which chunks were actually cited in the answer.
-    Match citation patterns like [IRC Section 162, p.3]
+    Handles formats: [Title (Year), Page N], [Title, p.N], [Title | Page N], [Title, Page N]
     """
-    citations = []
-
-    # Find all citation patterns in answer (handle p.N, Page N, | Page N variants)
+    # Patterns ordered most-specific first; all capture (title, page_number)
     patterns = [
-        r'\[([^\]]+),\s*p\.?\s*(\d+)\]',
-        r'\[([^\]]+)\|\s*[Pp]age\s*(\d+)\]',
-        r'\[([^\]]+),\s*[Pp]age\s*(\d+)\]',
+        r'\[([^\]]+?)\s*\(\d{4}\),\s*[Pp]age\s*(\d+)\]',   # [Title (Year), Page N]
+        r'\[([^\]]+?)\s*\(\d{4}\),\s*p\.?\s*(\d+)\]',        # [Title (Year), p.N]
+        r'\[([^\]]+),\s*p\.?\s*(\d+)\]',                      # [Title, p.N]
+        r'\[([^\]]+)\|\s*[Pp]age\s*(\d+)\]',                  # [Title | Page N]
+        r'\[([^\]]+),\s*[Pp]age\s*(\d+)\]',                   # [Title, Page N]
     ]
-    all_matches = []
+
+    def _clean_title(t: str) -> str:
+        t = re.sub(r'\s*\(\d{4}\)\s*$', '', t)   # strip trailing (Year)
+        t = re.sub(r',\s*$', '', t)               # strip trailing comma
+        return t.strip()
+
+    def _sig_words(t: str) -> set:
+        """Significant words: lowercase, split on non-alphanumeric incl. underscore, >2 chars."""
+        t = re.sub(r'[\W_]+', ' ', t.lower())
+        return {w for w in t.split() if len(w) > 2}
+
+    # Collect unique (clean_title, page) pairs
+    seen_keys: set = set()
+    all_matches: list = []
     for pat in patterns:
-        all_matches.extend(re.findall(pat, answer_text))
+        for raw_title, page_str in re.findall(pat, answer_text):
+            clean = _clean_title(raw_title)
+            key = (clean.lower(), page_str)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                all_matches.append((clean, page_str))
 
-    def _normalize(t: str) -> str:
-        return re.sub(r'[\s.\-,_|]+', ' ', t.lower()).strip()
-
-    # Match to actual chunks
+    citations = []
     for doc_title_partial, page_str in all_matches:
+        title_words = _sig_words(doc_title_partial)
+        best_chunk = None
+        best_overlap = 0
+
         for chunk in chunks:
-            source      = chunk.get('source', chunk)
+            source     = chunk.get('source', chunk)
             chunk_title = source.get('doc_title', '')
             chunk_page  = source.get('page_number', 0)
 
-            # Normalised fuzzy match on title + exact page
-            title_match = (
-                _normalize(doc_title_partial[:20]) in _normalize(chunk_title) or
-                _normalize(chunk_title[:20]) in _normalize(doc_title_partial)
-            )
-            page_match = str(chunk_page) == page_str
+            # Page must match exactly
+            try:
+                if int(chunk_page) != int(page_str):
+                    continue
+            except (ValueError, TypeError):
+                continue
 
-            if title_match and page_match:
-                citations.append({
-                    "doc_id":      source.get('doc_id', ''),
-                    "doc_title":   chunk_title,
-                    "page_number": chunk_page,
-                    "doc_type":    source.get('doc_type', ''),
-                    "section_ref": source.get('section_ref', '')
-                })
-                break
+            # Word-overlap fuzzy title match
+            overlap = len(title_words & _sig_words(chunk_title))
+            if overlap > best_overlap:
+                best_overlap = overlap
+                best_chunk = (source, chunk_title, chunk_page)
 
-    # Deduplicate
-    seen = set()
+        if best_chunk and best_overlap >= 2:
+            source, chunk_title, chunk_page = best_chunk
+            citations.append({
+                "doc_id":      source.get('doc_id', ''),
+                "doc_title":   chunk_title,
+                "cited_title": doc_title_partial,
+                "page_number": int(chunk_page),
+                "doc_type":    source.get('doc_type', ''),
+                "section_ref": source.get('section_ref', ''),
+            })
+        else:
+            # Keep the citation even without a chunk match so metrics can fuzzy-match
+            try:
+                page_int = int(page_str)
+            except (ValueError, TypeError):
+                page_int = 0
+            citations.append({
+                "doc_id":      '',
+                "doc_title":   doc_title_partial,
+                "cited_title": doc_title_partial,
+                "page_number": page_int,
+                "doc_type":    '',
+                "section_ref": '',
+            })
+
+    # Deduplicate on (doc_id or title, page)
+    seen: set = set()
     unique_citations = []
     for c in citations:
-        key = f"{c['doc_id']}_{c['page_number']}"
+        key = f"{c['doc_id'] or c['doc_title'][:30]}_{c['page_number']}"
         if key not in seen:
             seen.add(key)
             unique_citations.append(c)

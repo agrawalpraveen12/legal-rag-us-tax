@@ -13,6 +13,7 @@ interface Chunk {
 interface Citation {
   doc_id: string
   doc_title: string
+  cited_title?: string
   page_number: number
   doc_type: string
   section_ref: string
@@ -613,7 +614,7 @@ export default function Home() {
                                   return (
                                     <tr key={i} style={{ background: i % 2 === 0 ? '#F8F9FA' : '#fff', borderBottom: '1px solid #E8EDF2' }}>
                                       <td style={{ padding: '8px 12px', color: '#888', fontSize: '11px' }}>{i + 1}</td>
-                                      <td style={{ padding: '8px 12px', color: '#0A3055', fontWeight: 'bold' }}>{c.doc_title}</td>
+                                      <td style={{ padding: '8px 12px', color: '#0A3055', fontWeight: 'bold' }}>{c.doc_title || c.cited_title || c.doc_id || '—'}</td>
                                       <td style={{ padding: '8px 12px' }}>
                                         <span style={{
                                           fontSize: '10px', padding: '2px 6px', fontWeight: 'bold',

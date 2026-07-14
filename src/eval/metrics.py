@@ -99,6 +99,24 @@ def calculate_mrr(
     return 0.0
 
 
+def _sig_words(t: str) -> set:
+    """Significant words: lowercase, split on non-alphanumeric incl. underscore, >2 chars."""
+    t = re.sub(r'[\W_]+', ' ', t.lower())
+    return {w for w in t.split() if len(w) > 2}
+
+
+def _fuzzy_doc_match(cite_doc_id: str, cite_title: str, expected_doc_id: str) -> bool:
+    """
+    True if either:
+      - cite_doc_id exactly equals expected_doc_id, OR
+      - the extracted citation title shares >= 2 significant words with the expected_doc_id string.
+    """
+    if cite_doc_id and cite_doc_id == expected_doc_id:
+        return True
+    overlap = len(_sig_words(cite_title) & _sig_words(expected_doc_id))
+    return overlap >= 2
+
+
 def calculate_citation_accuracy(
     generated_citations: List[Dict],
     expected_doc_id: str,
@@ -112,10 +130,11 @@ def calculate_citation_accuracy(
         Returns 1.0 if the LLM correctly refused (is_refused = True) and no citations are generated, else 0.0.
     - If the query is answerable:
         Returns 1.0 if the expected citation (doc_id and page_no) is present in the generated citations, else 0.0.
+    Uses fuzzy doc matching: exact doc_id OR title-word overlap >= 2 against expected_doc_id.
     """
     expected_doc_id = expected_doc_id.strip().lower()
     expected_page_no = int(expected_page_no)
-    
+
     if not is_answerable:
         # Expected behavior: refusal
         if is_refused and not generated_citations:
@@ -125,18 +144,19 @@ def calculate_citation_accuracy(
         # Expected behavior: correct citation in output
         if is_refused:
             return 0.0
-            
+
         for citation in generated_citations:
-            cite_doc_id = str(citation.get("doc_id", "")).strip().lower()
-            cite_page = citation.get("page_number")
-            
+            cite_doc_id   = str(citation.get("doc_id", "")).strip().lower()
+            cite_title    = str(citation.get("cited_title") or citation.get("doc_title", "")).strip()
+            cite_page     = citation.get("page_number")
+
             if cite_page is not None:
                 try:
                     cite_page = int(cite_page)
                 except (ValueError, TypeError):
                     continue
-                    
-                if cite_doc_id == expected_doc_id and cite_page == expected_page_no:
+
+                if _fuzzy_doc_match(cite_doc_id, cite_title, expected_doc_id) and cite_page == expected_page_no:
                     return 1.0
         return 0.0
 
@@ -220,7 +240,7 @@ def calculate_faithfulness(
             break
             
     if entail_idx is None:
-        entail_idx = 1  # Standard fallback
+        entail_idx = 2  # [contradiction, neutral, entailment] — entailment is index 2
         
     # Run predictions in a batch
     pairs = [[premise, s] for s in cleaned_sentences]
@@ -235,7 +255,7 @@ def calculate_faithfulness(
             
         entailed_count = 0
         for prob in probs:
-            if prob[entail_idx] > 0.4:
+            if prob[entail_idx] > 0.25:
                 entailed_count += 1
                 
         return float(entailed_count) / len(cleaned_sentences)

@@ -1,9 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Data — raw PDFs and processed chunks are large and not committed
 data/raw/
 data/processed/
-.env
-__pycache__/
-*.pyc
+
+# Evaluation artefacts — checkpoint and per-run JSON are runtime outputs
+reports/eval_checkpoint.json
+reports/evaluation_results.json
+
+# Node / Next.js
 node_modules/
-venv/
+ui/.next/
+ui/out/
+ui/.vercel/
+.npm
+
+# Claude Code internal
 .claude/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Vector / model caches
 *.faiss
+*.index
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
