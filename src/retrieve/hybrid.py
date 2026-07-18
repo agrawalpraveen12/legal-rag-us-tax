@@ -19,22 +19,35 @@ Why query rewrite:
 """
 
 import os
+import sys
 import json
-from groq import Groq
+import pickle
+from pathlib import Path
 from elasticsearch import Elasticsearch
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 load_dotenv()
 
+# Allow running directly: python src/retrieve/hybrid.py
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+try:
+    from config import groq_call_with_rotation          # when src/ is in sys.path
+except ImportError:
+    from src.config import groq_call_with_rotation      # when project root is in sys.path
+
 # Config
-ES_URL            = os.getenv("ES_URL", "http://localhost:9200")
-INDEX_NAME        = "legal_rag"
-GROQ_KEY          = os.getenv("GROQ_API_KEY_PRIMARY")
-GROQ_KEY_FALLBACK = os.getenv("GROQ_API_KEY_FALLBACK")
-EMB_MODEL         = os.getenv("EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
+ES_URL     = os.getenv("ES_URL", "http://localhost:9200")
+INDEX_NAME = "legal_rag"
+EMB_MODEL  = os.getenv("EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
+GRAPH_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "data", "processed", "citation_graph.pkl"
+)
 
 # Global model instance (load once)
 _embedding_model = None
+_citation_graph = None
 
 def get_embedding_model():
     global _embedding_model
@@ -46,24 +59,28 @@ def get_embedding_model():
 def get_es():
     return Elasticsearch(ES_URL)
 
-def get_groq(use_fallback=False):
-    key = GROQ_KEY_FALLBACK if use_fallback else GROQ_KEY
-    return Groq(api_key=key)
+def get_citation_graph():
+    """Lazy-load the citation graph; returns None if not available."""
+    global _citation_graph
+    if _citation_graph is None and os.path.exists(GRAPH_FILE):
+        try:
+            with open(GRAPH_FILE, "rb") as f:
+                _citation_graph = pickle.load(f)
+            print(f"Citation graph loaded: {_citation_graph.number_of_nodes()} nodes")
+        except Exception as e:
+            print(f"Citation graph load failed: {e}")
+    return _citation_graph
 
 # ─── STEP 1: QUERY REWRITER ──────────────────────────────
 
-def rewrite_query(query: str, use_fallback: bool = False) -> str:
+def rewrite_query(query: str) -> str:
     """
     Rewrite natural language query to legal search terms.
+    Uses the full 4-key round-robin rotation (previously only 2 keys were used).
 
     Why Groq 8B (not 70B):
-      Query rewrite is simple task - 8B sufficient
-      Saves 70B tokens for generation (limited daily quota)
-      Speed: 8B = ~500 tok/sec vs 70B = ~100 tok/sec
-
-    Why temperature=0.1:
-      Deterministic output needed
-      Same query should always rewrite same way
+      Query rewrite is simple — 8B is sufficient and much faster.
+      Saves 70B quota for answer generation.
     """
     system_prompt = """You are a legal search query optimizer for US tax law.
 Rewrite the user's question into 5-8 precise legal search terms.
@@ -77,22 +94,17 @@ Input: "what happens if you don't pay taxes"
 Output: IRC 7201 tax evasion willful failure pay criminal penalty"""
 
     try:
-        client = get_groq(use_fallback)
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+        rewritten = groq_call_with_rotation(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": query}
+                {"role": "user", "content": query},
             ],
+            model="llama-3.1-8b-instant",
             max_tokens=50,
-            temperature=0.1
-        )
-        rewritten = response.choices[0].message.content.strip()
+            temperature=0.1,
+        ).strip()
         return rewritten
     except Exception as e:
-        if not use_fallback and GROQ_KEY_FALLBACK:
-            print(f"Primary key failed, using fallback: {e}")
-            return rewrite_query(query, use_fallback=True)
         print(f"Query rewrite failed: {e}, using original")
         return query
 
@@ -191,6 +203,40 @@ def vector_search(query: str, top_k: int = 50) -> list:
 
     return hits
 
+def generate_query_variants(original_query: str, rewritten: str, n: int = 2) -> list:
+    """
+    Generate n alternative query phrasings to improve recall on conceptual questions.
+    BM25 and vector search run against all variants; multi_query_rrf_fusion merges results.
+    Uses 8B (cheap/fast) — query rewriting doesn't need 70B.
+    """
+    system_prompt = (
+        "You are a US tax law search expert. "
+        "Given an original question and one rewritten search query, produce {n} "
+        "alternative search queries that emphasize DIFFERENT legal concepts or terminology. "
+        "Return exactly {n} lines, one query per line, no numbers, bullets, or explanation."
+    ).format(n=n)
+
+    try:
+        response = groq_call_with_rotation(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": (
+                    f"Original question: {original_query}\n"
+                    f"Existing search query: {rewritten}\n"
+                    f"Generate {n} alternative queries:"
+                )},
+            ],
+            model="llama-3.1-8b-instant",
+            max_tokens=100,
+            temperature=0.3,
+        ).strip()
+        variants = [line.strip() for line in response.split('\n') if line.strip()][:n]
+        return variants
+    except Exception as e:
+        print(f"Query variant generation failed: {e}")
+        return []
+
+
 # ─── STEP 4: RRF FUSION ──────────────────────────────────
 
 def rrf_fusion(bm25_hits: list, vector_hits: list, k: int = 60) -> list:
@@ -240,6 +286,123 @@ def rrf_fusion(bm25_hits: list, vector_hits: list, k: int = 60) -> list:
 
     return results
 
+
+def multi_query_rrf_fusion(query_result_pairs: list, k: int = 60) -> list:
+    """
+    RRF fusion across multiple (bm25_hits, vector_hits) pairs — one pair per query variant.
+    Chunks retrieved by more variants accumulate higher scores, surfacing results
+    that are relevant from multiple angles (keyword match AND semantic match).
+    """
+    scores = {}
+    sources = {}
+
+    for bm25_hits, vector_hits in query_result_pairs:
+        for hit in bm25_hits:
+            cid = hit['chunk_id']
+            scores[cid] = scores.get(cid, 0) + 1.0 / (k + hit['rank_bm25'])
+            sources[cid] = hit['source']
+        for hit in vector_hits:
+            cid = hit['chunk_id']
+            scores[cid] = scores.get(cid, 0) + 1.0 / (k + hit['rank_vector'])
+            if cid not in sources:
+                sources[cid] = hit['source']
+
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    results = []
+    for rank, (chunk_id, rrf_score) in enumerate(ranked[:50]):
+        results.append({
+            "rank":      rank + 1,
+            "rrf_score": round(rrf_score, 6),
+            "chunk_id":  chunk_id,
+            "source":    sources[chunk_id]
+        })
+    return results
+
+
+# ─── STEP 5: GRAPH EXPANSION ─────────────────────────────
+
+def graph_expand(query: str, rrf_results: list, top_initial: int = 10) -> list:
+    """
+    Expand RRF candidates with 1-hop citation-graph neighbours.
+
+    After RRF fusion gives top-50 candidates, the graph finds documents that
+    CITE or ARE CITED BY the top-10 results and fetches their highest-BM25
+    chunks. These are appended to the candidate pool at a slightly lower score
+    so the reranker can still surface them for multi-hop queries.
+
+    Example: query about IRC§162 retrieves Welch v. Helvering. Graph knows
+    Welch CITES act_sec162 → act_sec162 chunks are added even if they ranked
+    below 50 in the initial hybrid search.
+    """
+    G = get_citation_graph()
+    if G is None:
+        return rrf_results
+
+    # Collect doc_ids from the first top_initial results
+    top_doc_ids = []
+    for r in rrf_results[:top_initial]:
+        doc_id = r["source"].get("doc_id", "")
+        if doc_id and doc_id not in top_doc_ids:
+            top_doc_ids.append(doc_id)
+
+    if not top_doc_ids:
+        return rrf_results
+
+    # 1-hop neighbours (predecessors + successors)
+    related_ids = set()
+    for doc_id in top_doc_ids:
+        if doc_id in G:
+            related_ids.update(G.predecessors(doc_id))
+            related_ids.update(G.successors(doc_id))
+    related_ids -= set(top_doc_ids)
+
+    # Remove docs already represented in the candidate pool
+    already_in_pool = {r["source"].get("doc_id", "") for r in rrf_results}
+    new_doc_ids = [d for d in related_ids if d not in already_in_pool]
+
+    if not new_doc_ids:
+        return rrf_results
+
+    # Fetch the best BM25-matching chunk per related doc
+    try:
+        es = get_es()
+        es_result = es.search(
+            index=INDEX_NAME,
+            body={
+                "query": {
+                    "bool": {
+                        "must":   {"multi_match": {"query": query, "fields": ["text", "doc_title^2"]}},
+                        "filter": [{"terms": {"doc_id": new_doc_ids}}],
+                    }
+                },
+                "size": min(len(new_doc_ids) * 2, 20),
+                "_source": True,
+            },
+        )
+    except Exception as e:
+        print(f"Graph expansion ES query failed: {e}")
+        return rrf_results
+
+    # Append expanded chunks with a score slightly below the current minimum
+    min_score = min((r["rrf_score"] for r in rrf_results), default=0.001) * 0.7
+    seen_chunks = {r["chunk_id"] for r in rrf_results}
+    for hit in es_result["hits"]["hits"]:
+        cid = hit["_source"]["chunk_id"]
+        if cid in seen_chunks:
+            continue
+        seen_chunks.add(cid)
+        rrf_results.append({
+            "rank":         len(rrf_results) + 1,
+            "rrf_score":    min_score,
+            "chunk_id":     cid,
+            "source":       hit["_source"],
+            "graph_expanded": True,
+        })
+
+    print(f"Graph expansion added {len(es_result['hits']['hits'])} candidates from {len(new_doc_ids)} related docs")
+    return rrf_results
+
+
 # ─── MAIN HYBRID SEARCH ──────────────────────────────────
 
 def hybrid_search(
@@ -258,21 +421,31 @@ def hybrid_search(
 
     # Step 1: Rewrite query
     rewritten = rewrite_query(query) if rewrite else query
-
     print(f"Original:  {query}")
     print(f"Rewritten: {rewritten}")
 
-    # Step 2: BM25
-    bm25_results = bm25_search(rewritten, top_k)
-    print(f"BM25 hits: {len(bm25_results)}")
+    # Step 2: Generate query variants for multi-query retrieval
+    variants = generate_query_variants(query, rewritten, n=2) if rewrite else []
+    all_queries = [rewritten] + variants
+    if variants:
+        print(f"Variants:  {variants}")
 
-    # Step 3: Vector
-    vector_results = vector_search(rewritten, top_k)
-    print(f"Vector hits: {len(vector_results)}")
+    # Step 3: BM25 + Vector for each query variant
+    all_bm25 = []
+    all_vector = []
+    for q in all_queries:
+        all_bm25.append(bm25_search(q, top_k))
+        all_vector.append(vector_search(q, top_k))
+    print(f"BM25 hits: {len(all_bm25[0])} (primary) + {sum(len(h) for h in all_bm25[1:])} (variants)")
+    print(f"Vector hits: {len(all_vector[0])} (primary) + {sum(len(h) for h in all_vector[1:])} (variants)")
 
-    # Step 4: RRF
-    fused = rrf_fusion(bm25_results, vector_results)
-    print(f"After RRF: {len(fused)} unique chunks")
+    # Step 4: Multi-query RRF fusion — chunks consistent across variants rank higher
+    fused = multi_query_rrf_fusion(list(zip(all_bm25, all_vector)))
+    print(f"After multi-query RRF: {len(fused)} unique chunks")
+
+    # Step 5: Citation graph expansion
+    fused = graph_expand(rewritten, fused)
+    print(f"After graph expansion: {len(fused)} candidates")
 
     # Optional filter by doc_type
     if doc_type_filter:
@@ -282,8 +455,8 @@ def hybrid_search(
         "original_query":  query,
         "rewritten_query": rewritten,
         "results":         fused,
-        "bm25_count":      len(bm25_results),
-        "vector_count":    len(vector_results),
+        "bm25_count":      len(all_bm25[0]),
+        "vector_count":    len(all_vector[0]),
         "total_unique":    len(fused)
     }
 

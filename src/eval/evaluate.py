@@ -30,7 +30,7 @@ from eval.metrics import (
     calculate_recall_at_k,
     calculate_mrr,
     calculate_citation_accuracy,
-    calculate_faithfulness,
+    calculate_faithfulness_llm,
     calculate_cohens_h,
 )
 
@@ -120,7 +120,7 @@ def run_evaluation():
             print(f"  Reranking {len(hybrid_chunks)} candidates...")
             reranked_chunks = rerank(query, hybrid_chunks, top_k=8)
             
-            # Step C: Generation
+            # Step C: Generation (all 8 reranked chunks — 70B handles the full context)
             print("  Generating answer...")
             gen_res = generate_answer(query, reranked_chunks)
             generated_answer = gen_res.get("answer", "")
@@ -147,8 +147,8 @@ def run_evaluation():
                 generated_citations, expected_doc_id, expected_page_no, is_answerable, is_refused
             )
             
-            # DeBERTa NLI Faithfulness
-            faithfulness = calculate_faithfulness(generated_answer, reranked_chunks)
+            # LLM-as-judge faithfulness (1 Groq call vs DeBERTa's strict NLI scoring)
+            faithfulness = calculate_faithfulness_llm(generated_answer, reranked_chunks)
             
             record = {
                 "query_id": query_id,
@@ -228,8 +228,9 @@ def run_evaluation():
             with open(CHECKPOINT_FILE, "w", encoding="utf-8") as f:
                 json.dump(checkpoint_state, f, indent=2, ensure_ascii=False)
                 
-        # API Cooling rate limits (llama 3.3 70B can trigger 429)
-        time.sleep(2)
+        # API cooldown: 45s covers increased token usage from 70B generation (8 chunks)
+        # + 2 variant queries + LLM faithfulness call per query.
+        time.sleep(45)
         
     # 4. Aggregate Performance Calculations
     print("\n" + "=" * 60)

@@ -30,30 +30,46 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv()
 
-from config import groq_call_with_rotation, GROQ_KEYS, GROQ_MODEL_FAST
-GROQ_MODEL = GROQ_MODEL_FAST  # llama-3.1-8b-instant — higher TPM limits
+from config import groq_call_with_rotation, GROQ_KEYS, GROQ_MODEL_PRIMARY
+GROQ_MODEL = GROQ_MODEL_PRIMARY  # llama-3.3-70b-versatile — better citation format adherence
 
 # --- PROMPTS -------------------------------------------------
 
-SYSTEM_PROMPT = """You are a precise US tax law research assistant.
+SYSTEM_PROMPT = """You are a precise US tax law research assistant. Answer only from the provided context.
 
-STRICT RULES:
-1. Answer ONLY using the provided legal context below
-2. After EVERY claim, add citation: [Document Title, p.PAGE_NUMBER]
-3. If the answer is NOT in the context, respond with exactly:
-   "INSUFFICIENT_CONTEXT: The provided documents do not contain enough information to answer this question."
-4. Never use external knowledge
-5. Never guess or infer beyond what is explicitly stated
-6. Use exact legal terminology from the source text
+CITATION RULE — every factual claim must be followed immediately by a bracket citation:
+  CORRECT: [Welch v. Helvering, p.2]
+  CORRECT: [IRC Section 162, p.3]
+  WRONG (no brackets): Welch v. Helvering (1933), p.2
+  WRONG (year inside): [Welch v. Helvering (1933), p.2]
+  WRONG (pipe/Page):   [IRC Section 162 | Page 3]
 
-CITATION FORMAT:
-- Single source: [IRC Section 162, p.3]
-- Multiple sources: [IRC Section 162, p.3] and [Welch v. Helvering, p.2]
+REFUSAL RULE — if the context does not contain the answer, respond ONLY with:
+  INSUFFICIENT_CONTEXT: The provided documents do not contain enough information to answer this question.
 
-ANSWER FORMAT:
-- Start directly with the answer
-- Keep answers concise but complete
-- End with a "Sources:" section listing all cited documents"""
+EXAMPLES:
+
+Q: What is gross income?
+A: Gross income means all income from whatever source derived. [IRC Section 61, p.1] This includes compensation for services, rents, royalties, and dividends. [IRC Section 61, p.1]
+
+Sources:
+[IRC Section 61, p.1]
+
+---
+
+Q: What did the court hold in Welch v. Helvering?
+A: The Supreme Court held that payments to creditors of a bankrupt corporation were not deductible as ordinary and necessary business expenses. [Welch v. Helvering, p.2]
+
+Sources:
+[Welch v. Helvering, p.2]
+
+---
+
+INSTRUCTIONS:
+- Start your answer directly — no preamble
+- Cite every claim with [Title, p.N] immediately after the claim
+- Use the exact document title from the [CONTEXT N] headers
+- End with a "Sources:" section listing each unique citation once"""
 
 
 def build_context(retrieved_chunks: list) -> str:
@@ -108,23 +124,9 @@ def generate_answer(
         answer_text = groq_call_with_rotation(
             messages,
             model=GROQ_MODEL,
-            max_tokens=800,
+            max_tokens=1200,
             temperature=0.1,
         ).strip()
-
-        citations  = extract_citations(answer_text, retrieved_chunks)
-        is_refused = answer_text.startswith("INSUFFICIENT_CONTEXT")
-
-        return {
-            "answer":      answer_text,
-            "citations":   citations,
-            "is_refused":  is_refused,
-            "model":       GROQ_MODEL,
-            "tokens_used": 0,   # not exposed by rotation helper
-            "chunks_used": len(retrieved_chunks),
-            "keys_available": len(GROQ_KEYS),
-        }
-
     except Exception as e:
         return {
             "answer":      f"ERROR: {str(e)}",
@@ -136,19 +138,37 @@ def generate_answer(
             "keys_available": len(GROQ_KEYS),
         }
 
+    # Extract citations outside the LLM try-except so extraction errors surface
+    # rather than being silently swallowed and returning citations=[].
+    citations  = extract_citations(answer_text, retrieved_chunks)
+    is_refused = answer_text.startswith("INSUFFICIENT_CONTEXT")
+
+    return {
+        "answer":      answer_text,
+        "citations":   citations,
+        "is_refused":  is_refused,
+        "model":       GROQ_MODEL,
+        "tokens_used": 0,   # not exposed by rotation helper
+        "chunks_used": len(retrieved_chunks),
+        "keys_available": len(GROQ_KEYS),
+    }
+
 
 def extract_citations(answer_text: str, chunks: list) -> list:
     """
     Extract which chunks were actually cited in the answer.
-    Handles formats: [Title (Year), Page N], [Title, p.N], [Title | Page N], [Title, Page N]
+    Handles all citation formats the LLM might produce.
     """
-    # Patterns ordered most-specific first; all capture (title, page_number)
+    # Patterns ordered most-specific first; all capture (title, page_number).
+    # [^\]]* in Pattern 4 allows trailing content like ", p.450" after the page.
     patterns = [
-        r'\[([^\]]+?)\s*\(\d{4}\),\s*[Pp]age\s*(\d+)\]',   # [Title (Year), Page N]
-        r'\[([^\]]+?)\s*\(\d{4}\),\s*p\.?\s*(\d+)\]',        # [Title (Year), p.N]
-        r'\[([^\]]+),\s*p\.?\s*(\d+)\]',                      # [Title, p.N]
-        r'\[([^\]]+)\|\s*[Pp]age\s*(\d+)\]',                  # [Title | Page N]
-        r'\[([^\]]+),\s*[Pp]age\s*(\d+)\]',                   # [Title, Page N]
+        r'\[([^\]]+?)\s*\(\d{4}\),\s*[Pp]age\s*(\d+)[^\]]*\]',  # [Title (Year), Page N ...]
+        r'\[([^\]]+?)\s*\(\d{4}\),\s*p\.?\s*(\d+)[^\]]*\]',      # [Title (Year), p.N ...]
+        r'\[([^\]]+),\s*p\.?\s*(\d+)\]',                           # [Title, p.N]
+        r'\[([^\]]+)\|\s*[Pp]age\s*(\d+)[^\]]*\]',                # [Title | Page N ...]
+        r'\[([^\]]+),\s*[Pp]age\s*(\d+)\]',                       # [Title, Page N]
+        # Catch-all: any bracket with a page number anywhere inside
+        r'\[([^\]\|,]+?)(?:\s*\([^)]*\))?\s*[,\|]\s*(?:[Pp]age\s*|p\.?\s*)(\d+)',  # fallback
     ]
 
     def _clean_title(t: str) -> str:

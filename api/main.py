@@ -126,7 +126,7 @@ async def health():
         },
         "embedding_model": "BAAI/bge-base-en-v1.5",
         "reranker_model":  "BAAI/bge-reranker-base",
-        "llm_model":       "llama-3.3-70b-versatile",
+        "llm_model":       "llama-3.1-8b-instant",
     }
 
 

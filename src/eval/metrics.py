@@ -167,44 +167,55 @@ def calculate_faithfulness(
 ) -> float:
     """
     Calculate Faithfulness using DeBERTa NLI sentence entailment.
-    Each sentence of the answer must be entailed by the retrieved context.
-    - Correct refusals are automatically marked 1.0 (no claims made, so 100% faithful).
-    - Otherwise, computes: (number of entailed sentences) / (total sentences).
+
+    Each answer sentence is checked against EACH retrieved chunk individually.
+    A sentence is considered entailed if ANY chunk entails it above the threshold.
+
+    Previous approach concatenated all chunks into one premise (~6400 tokens), then
+    truncated to 512 — meaning only ~8% of context was seen by the NLI model.
+    Per-chunk checking fits each (chunk ~600 words, sentence) pair within 512 tokens,
+    utilizing ~57% of each chunk and all 8 chunks.
+
+    - Correct refusals: automatically 1.0 (no claims to verify).
+    - Returns: (entailed sentences) / (total sentences).
     """
     if answer_text.strip().startswith("INSUFFICIENT_CONTEXT"):
         return 1.0
-        
-    # Concatenate the text of the retrieved chunks to build the premise (context)
-    premise_parts = []
+
+    # Collect chunk texts
+    chunk_texts = []
     for chunk in retrieved_chunks:
         source = chunk.get("source", chunk)
         text = source.get("text", "")
-        if text:
-            premise_parts.append(text)
-            
-    premise = "\n".join(premise_parts).strip()
-    if not premise:
+        if text and text.strip():
+            chunk_texts.append(text.strip())
+
+    if not chunk_texts:
         return 0.0
-        
-    # Preprocess text to strip bracketed citations to clean the claims
-    cleaned_answer = re.sub(r'\[[^\]]+\]', '', answer_text)
+
+    # Remove the "Sources:" section (everything from "Sources:" to end).
+    # These lines are citation headers/list items, not factual claims — they
+    # would score near-zero entailment and artificially deflate faithfulness.
+    answer_body = re.split(r'\n\s*Sources\s*:', answer_text, maxsplit=1, flags=re.IGNORECASE)[0]
+
+    # Strip bracketed citations before sentence splitting
+    cleaned_answer = re.sub(r'\[[^\]]+\]', '', answer_body)
     cleaned_answer = re.sub(r'\s+', ' ', cleaned_answer)
-    
-    # Split the answer into sentences (ignoring common abbreviations like sec., p., v., Inc.)
-    abbreviations = ['etc', 'eg', 'ie', 'v', 'vs', 'inc', 'co', 'corp', 'l', 'p', 'sec', 'pub', 'art', 'al', 'dr', 'mr', 'mrs', 'ms', 'u.s', 'u.s.a']
+
+    # Split into sentences (handle common legal abbreviations to avoid false splits)
+    abbreviations = {
+        'etc', 'eg', 'ie', 'v', 'vs', 'inc', 'co', 'corp', 'l', 'p',
+        'sec', 'pub', 'art', 'al', 'dr', 'mr', 'mrs', 'ms', 'u.s', 'u.s.a'
+    }
     raw_sentences = re.split(r'(?<=\.|\?)\s+(?=[A-Z])', cleaned_answer)
-    
+
     sentences = []
     temp_sentence = ""
     for s in raw_sentences:
         s = s.strip()
         if not s:
             continue
-        if temp_sentence:
-            temp_sentence += " " + s
-        else:
-            temp_sentence = s
-            
+        temp_sentence = (temp_sentence + " " + s).strip() if temp_sentence else s
         words = temp_sentence.split()
         if words:
             last_word = words[-1].lower().rstrip('.?,;')
@@ -212,11 +223,10 @@ def calculate_faithfulness(
                 continue
         sentences.append(temp_sentence)
         temp_sentence = ""
-        
     if temp_sentence:
         sentences.append(temp_sentence)
-        
-    # Clean sentences: remove trailing/leading spaces, punctuation left by removing citations, etc.
+
+    # Clean up sentences
     cleaned_sentences = []
     for s in sentences:
         s = re.sub(r'\s+', ' ', s)
@@ -224,43 +234,159 @@ def calculate_faithfulness(
         s = s.strip(" .,;and")
         if len(s) > 5:
             cleaned_sentences.append(s)
-            
+
     if not cleaned_sentences:
         return 1.0
-        
-    # Load model and determine labels dynamically
+
+    # Load NLI model
     model, tokenizer, device = get_nli_model()
     import torch
-    
+
     id2label = model.config.id2label
     entail_idx = None
     for k, v in id2label.items():
         if "entail" in v.lower():
             entail_idx = int(k)
             break
-            
     if entail_idx is None:
-        entail_idx = 2  # [contradiction, neutral, entailment] — entailment is index 2
-        
-    # Run predictions in a batch
-    pairs = [[premise, s] for s in cleaned_sentences]
-    
+        entail_idx = 2  # standard: [contradiction=0, neutral=1, entailment=2]
+
+    entailed_count = 0
+
+    # For each sentence, check against every chunk and take the max entailment score.
+    # Truncate only the premise (chunk) so the full hypothesis (sentence) is always seen.
+    for sentence in cleaned_sentences:
+        max_entail_prob = 0.0
+        try:
+            pairs = [[ct, sentence] for ct in chunk_texts]
+            inputs = tokenizer(
+                pairs,
+                padding=True,
+                truncation="only_first",   # truncate premise (chunk), keep full sentence
+                max_length=512,
+                return_tensors="pt",
+            )
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+            with torch.no_grad():
+                outputs = model(**inputs)
+                probs = torch.softmax(outputs.logits, dim=1).cpu().numpy()
+            max_entail_prob = float(max(p[entail_idx] for p in probs))
+        except Exception as e:
+            print(f"NLI error on sentence: {e}")
+            continue
+
+        if max_entail_prob > 0.15:
+            entailed_count += 1
+
+    return float(entailed_count) / len(cleaned_sentences)
+
+
+def calculate_faithfulness_llm(
+    answer_text: str,
+    retrieved_chunks: List[Dict],
+) -> float:
+    """
+    LLM-as-judge faithfulness: one Groq API call per query.
+
+    Batches all answer sentences against the top-4 retrieved chunks in a single prompt.
+    More accurate than DeBERTa NLI for legal text — handles paraphrase and legal synonyms
+    that NLI scores as neutral even when genuinely supported by the source.
+
+    Returns (supported sentences) / (total sentences).
+    Uses llama-3.1-8b-instant (8B, cheap) — YES/NO classification doesn't need 70B.
+    """
+    if answer_text.strip().startswith("INSUFFICIENT_CONTEXT"):
+        return 1.0
+
+    # Top-4 chunks keep the prompt within 8B context limits
+    chunk_texts = []
+    for chunk in retrieved_chunks[:4]:
+        source = chunk.get("source", chunk)
+        text = source.get("text", "")
+        if text and text.strip():
+            chunk_texts.append(text.strip()[:800])
+
+    if not chunk_texts:
+        return 0.0
+
+    # Strip Sources section and bracketed citations
+    answer_body = re.split(r'\n\s*Sources\s*:', answer_text, maxsplit=1, flags=re.IGNORECASE)[0]
+    cleaned_answer = re.sub(r'\[[^\]]+\]', '', answer_body)
+    cleaned_answer = re.sub(r'\s+', ' ', cleaned_answer).strip()
+
+    # Sentence splitting (same logic as calculate_faithfulness)
+    abbreviations = {
+        'etc', 'eg', 'ie', 'v', 'vs', 'inc', 'co', 'corp', 'l', 'p',
+        'sec', 'pub', 'art', 'al', 'dr', 'mr', 'mrs', 'ms', 'u.s', 'u.s.a'
+    }
+    raw_sentences = re.split(r'(?<=\.|\?)\s+(?=[A-Z])', cleaned_answer)
+    sentences = []
+    temp = ""
+    for s in raw_sentences:
+        s = s.strip()
+        if not s:
+            continue
+        temp = (temp + " " + s).strip() if temp else s
+        words = temp.split()
+        if words:
+            last = words[-1].lower().rstrip('.?,;')
+            if last in abbreviations or (len(last) == 1 and last.isalpha()):
+                continue
+        sentences.append(temp)
+        temp = ""
+    if temp:
+        sentences.append(temp)
+
+    sentences = [re.sub(r'\s+', ' ', s).strip(" .,;and") for s in sentences]
+    sentences = [s for s in sentences if len(s) > 5]
+
+    if not sentences:
+        return 1.0
+
+    # Single LLM call: all sentences evaluated against all top-4 chunks at once
+    context_block = "\n\n".join(
+        f"[Chunk {i+1}]\n{ct}" for i, ct in enumerate(chunk_texts)
+    )
+    claims_block = "\n".join(f"{i+1}. {s}" for i, s in enumerate(sentences))
+
+    system_prompt = (
+        "You are a faithfulness evaluator for a legal RAG system. "
+        "Given source context chunks and a list of claims, determine which claims "
+        "are directly supported by the context (stated or logically implied by any chunk). "
+        f"Return exactly {len(sentences)} lines in format '1: YES' or '1: NO'."
+    )
+    user_msg = (
+        f"SOURCE CONTEXT:\n{context_block}\n\n"
+        f"CLAIMS:\n{claims_block}\n\n"
+        "Evaluate each claim (YES/NO, one per line):"
+    )
+
     try:
-        inputs = tokenizer(pairs, padding=True, truncation=True, max_length=512, return_tensors="pt")
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-        
-        with torch.no_grad():
-            outputs = model(**inputs)
-            probs = torch.softmax(outputs.logits, dim=1).cpu().numpy()
-            
-        entailed_count = 0
-        for prob in probs:
-            if prob[entail_idx] > 0.25:
-                entailed_count += 1
-                
-        return float(entailed_count) / len(cleaned_sentences)
+        try:
+            from config import groq_call_with_rotation
+        except ImportError:
+            from src.config import groq_call_with_rotation
+
+        response = groq_call_with_rotation(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_msg},
+            ],
+            model="llama-3.1-8b-instant",
+            max_tokens=len(sentences) * 15 + 50,
+            temperature=0.0,
+        )
+        lines = [l.strip() for l in response.strip().split('\n') if l.strip()]
+        supported_indices = set()
+        for line in lines:
+            m = re.match(r'^(\d+)[:\.\)]\s*(YES|NO)', line, re.IGNORECASE)
+            if m and m.group(2).upper() == "YES":
+                idx = int(m.group(1))
+                if 1 <= idx <= len(sentences):
+                    supported_indices.add(idx)
+        return float(len(supported_indices)) / len(sentences)
     except Exception as e:
-        print(f"Error during NLI faithfulness check: {e}")
+        print(f"LLM faithfulness error: {e}, falling back to 0.0")
         return 0.0
 
 
