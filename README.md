@@ -1,3 +1,13 @@
+---
+title: Legal RAG US Tax Law
+emoji: ⚖️
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Legal RAG System — US Tax Law Research Assistant
 
 > An AI-powered Retrieval-Augmented Generation system for precise, citation-grounded legal research across US Tax Law. Every answer cites exact document, section, and page number — or refuses to answer rather than hallucinate.

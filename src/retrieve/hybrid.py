@@ -23,7 +23,6 @@ import sys
 import json
 import pickle
 from pathlib import Path
-from elasticsearch import Elasticsearch
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 load_dotenv()
@@ -36,9 +35,12 @@ try:
 except ImportError:
     from src.config import groq_call_with_rotation      # when project root is in sys.path
 
+try:
+    from index.store import get_store                   # when src/ is in sys.path
+except ImportError:
+    from src.index.store import get_store               # when project root is in sys.path
+
 # Config
-ES_URL     = os.getenv("ES_URL", "http://localhost:9200")
-INDEX_NAME = "legal_rag"
 EMB_MODEL  = os.getenv("EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
 GRAPH_FILE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -55,9 +57,6 @@ def get_embedding_model():
         print("Loading embedding model...")
         _embedding_model = SentenceTransformer(EMB_MODEL)
     return _embedding_model
-
-def get_es():
-    return Elasticsearch(ES_URL)
 
 def get_citation_graph():
     """Lazy-load the citation graph; returns None if not available."""
@@ -112,59 +111,33 @@ Output: IRC 7201 tax evasion willful failure pay criminal penalty"""
 
 def bm25_search(query: str, top_k: int = 50) -> list:
     """
-    BM25 keyword search using Elasticsearch.
+    BM25 keyword search using the in-process store (rank-bm25).
 
-    Why multi_match over match:
-      Searches both text and doc_title fields
-      Legal queries often match document titles exactly
+    Formerly Elasticsearch multi_match; now a pure-Python BM25 over the
+    chunk texts. Doc-title / section terms are already present in the chunk
+    text metadata, so a single-field BM25 gives comparable recall at this
+    corpus size, and RRF + the cross-encoder reranker recover the rest.
 
     Why top_k=50:
       RRF needs enough candidates to work well
       Final reranker picks top-8 from 50
     """
-    es = get_es()
-
-    result = es.search(
-        index=INDEX_NAME,
-        body={
-            "query": {
-                "multi_match": {
-                    "query": query,
-                    "fields": ["text", "doc_title^2", "section_ref^3"],
-                    "type": "best_fields"
-                }
-            },
-            "size": top_k,
-            "_source": True
-        }
-    )
-
-    hits = []
-    for rank, hit in enumerate(result['hits']['hits']):
-        hits.append({
-            "rank_bm25":  rank + 1,
-            "score_bm25": hit['_score'],
-            "chunk_id":   hit['_source']['chunk_id'],
-            "source":     hit['_source']
-        })
-
-    return hits
+    return get_store().bm25_search(query, top_k=top_k)
 
 # ─── STEP 3: VECTOR SEARCH ───────────────────────────────
 
 def vector_search(query: str, top_k: int = 50) -> list:
     """
-    Dense vector search using BGE embeddings + ES kNN.
+    Dense vector search using BGE embeddings + brute-force cosine (store.py).
 
     Why BGE prefix "Represent this sentence for searching relevant passages:":
       BGE model recommended query prefix for asymmetric search
-      Document chunks don't need prefix (already indexed without)
+      Document chunks don't need prefix (already embedded without)
       Improves recall by ~3-5%
 
-    Why num_candidates=100:
-      HNSW approximate search candidate pool
-      More candidates = more accurate but slower
-      100 is ES recommended default
+    Why brute-force instead of an ANN index:
+      3,497 chunks x 768 dims is a ~11 MB matrix; one matmul scores the
+      whole corpus in <5 ms. No HNSW / FAISS / ES needed at this scale.
     """
     model = get_embedding_model()
 
@@ -174,34 +147,10 @@ def vector_search(query: str, top_k: int = 50) -> list:
     query_embedding = model.encode(
         prefixed_query,
         normalize_embeddings=True
-    ).tolist()
-
-    es = get_es()
-
-    result = es.search(
-        index=INDEX_NAME,
-        body={
-            "knn": {
-                "field": "embedding",
-                "query_vector": query_embedding,
-                "k": top_k,
-                "num_candidates": 100
-            },
-            "size": top_k,
-            "_source": True
-        }
     )
 
-    hits = []
-    for rank, hit in enumerate(result['hits']['hits']):
-        hits.append({
-            "rank_vector":  rank + 1,
-            "score_vector": hit['_score'],
-            "chunk_id":     hit['_source']['chunk_id'],
-            "source":       hit['_source']
-        })
-
-    return hits
+    # Brute-force cosine over the precomputed embedding matrix (see store.py).
+    return get_store().vector_search(query_embedding, top_k=top_k)
 
 def generate_query_variants(original_query: str, rewritten: str, n: int = 2) -> list:
     """
@@ -363,31 +312,20 @@ def graph_expand(query: str, rrf_results: list, top_initial: int = 10) -> list:
     if not new_doc_ids:
         return rrf_results
 
-    # Fetch the best BM25-matching chunk per related doc
+    # Fetch the best BM25-matching chunk per related doc (in-process store)
     try:
-        es = get_es()
-        es_result = es.search(
-            index=INDEX_NAME,
-            body={
-                "query": {
-                    "bool": {
-                        "must":   {"multi_match": {"query": query, "fields": ["text", "doc_title^2"]}},
-                        "filter": [{"terms": {"doc_id": new_doc_ids}}],
-                    }
-                },
-                "size": min(len(new_doc_ids) * 2, 20),
-                "_source": True,
-            },
+        expanded_sources = get_store().search_by_doc_ids(
+            query, new_doc_ids, size=min(len(new_doc_ids) * 2, 20)
         )
     except Exception as e:
-        print(f"Graph expansion ES query failed: {e}")
+        print(f"Graph expansion query failed: {e}")
         return rrf_results
 
     # Append expanded chunks with a score slightly below the current minimum
     min_score = min((r["rrf_score"] for r in rrf_results), default=0.001) * 0.7
     seen_chunks = {r["chunk_id"] for r in rrf_results}
-    for hit in es_result["hits"]["hits"]:
-        cid = hit["_source"]["chunk_id"]
+    for src in expanded_sources:
+        cid = src["chunk_id"]
         if cid in seen_chunks:
             continue
         seen_chunks.add(cid)
@@ -395,11 +333,11 @@ def graph_expand(query: str, rrf_results: list, top_initial: int = 10) -> list:
             "rank":         len(rrf_results) + 1,
             "rrf_score":    min_score,
             "chunk_id":     cid,
-            "source":       hit["_source"],
+            "source":       src,
             "graph_expanded": True,
         })
 
-    print(f"Graph expansion added {len(es_result['hits']['hits'])} candidates from {len(new_doc_ids)} related docs")
+    print(f"Graph expansion added {len(expanded_sources)} candidates from {len(new_doc_ids)} related docs")
     return rrf_results
 
 

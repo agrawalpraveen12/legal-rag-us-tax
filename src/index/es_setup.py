@@ -1,4 +1,9 @@
 """
+[DEPRECATED — Elasticsearch is no longer used]
+==============================================
+Replaced by the in-process store: src/index/store.py + src/index/build_index.py.
+Kept for reference / optional ES-based deployments only. Not on the runtime path.
+
 P3 - Elasticsearch Index Setup
 ================================
 Index name: legal_rag

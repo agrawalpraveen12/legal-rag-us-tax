@@ -24,26 +24,23 @@ def _load_models_sync():
     print("[startup] All models ready.")
 
 
-def _auto_index_if_empty():
+def _ensure_index():
+    """
+    Ensure the local vector index exists, then warm the in-process store.
+    No Elasticsearch — build_index.py precomputes embeddings.npy, and the
+    store (src/index/store.py) serves BM25 + cosine entirely in-process.
+    """
     import subprocess
-    from elasticsearch import Elasticsearch, NotFoundError
-    es = Elasticsearch(os.getenv("ES_URL", "http://localhost:9200"))
-    try:
-        count = es.count(index="legal_rag")["count"]
-        if count == 0:
-            print("[startup] Index empty — running auto-indexing…")
-            subprocess.run([sys.executable, "src/index/es_setup.py"], check=True)
-            subprocess.run([sys.executable, "src/index/index_docs.py"], check=True)
-            print("[startup] Auto-indexing complete.")
-        else:
-            print(f"[startup] Index ready — {count} docs found.")
-    except NotFoundError:
-        print("[startup] Index not found — running auto-indexing…")
-        subprocess.run([sys.executable, "src/index/es_setup.py"], check=True)
-        subprocess.run([sys.executable, "src/index/index_docs.py"], check=True)
-        print("[startup] Auto-indexing complete.")
-    except Exception as exc:
-        print(f"[startup] Warning: could not check index ({exc}) — skipping auto-index.")
+    from src.index.store import EMB_FILE
+
+    if not EMB_FILE.exists():
+        print("[startup] Embedding index missing — building it (one-time)…")
+        subprocess.run([sys.executable, "src/index/build_index.py"], check=True)
+        print("[startup] Index build complete.")
+
+    from src.index.store import get_store
+    store = get_store()               # loads chunks, builds BM25, loads embeddings
+    print(f"[startup] Store ready — {store.count()} chunks indexed.")
 
 
 @asynccontextmanager
@@ -51,7 +48,7 @@ async def lifespan(app: FastAPI):
     import asyncio
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, _load_models_sync)
-    await loop.run_in_executor(None, _auto_index_if_empty)
+    await loop.run_in_executor(None, _ensure_index)
     yield
 
 
@@ -88,8 +85,8 @@ class AnswerRequest(BaseModel):
 
 # ── Routes ───────────────────────────────────────────────────────────────────
 
-@app.get("/")
-async def root():
+@app.get("/api")
+async def api_root():
     return {
         "message": "Legal RAG API — US Tax Law",
         "docs": "/docs",
@@ -104,26 +101,21 @@ async def root():
 
 @app.get("/api/health")
 async def health():
-    from elasticsearch import Elasticsearch
-    es = Elasticsearch(os.getenv("ES_URL", "http://localhost:9200"))
     try:
-        info  = es.info()
-        count = es.count(index="legal_rag")
-        es_status  = "ok"
-        es_docs    = count["count"]
-        es_version = info["version"]["number"]
+        from src.index.store import get_store
+        store = get_store()
+        index_status = {
+            "status":     "ok",
+            "backend":    "in-process (numpy cosine + rank-bm25)",
+            "doc_count":  store.count(),
+            "vector":     store.embeddings is not None,
+        }
     except Exception as exc:
-        es_status  = f"error: {exc}"
-        es_docs    = 0
-        es_version = "unknown"
+        index_status = {"status": f"error: {exc}", "backend": "in-process", "doc_count": 0}
 
     return {
         "status": "ok",
-        "elasticsearch": {
-            "status":      es_status,
-            "doc_count":   es_docs,
-            "version":     es_version,
-        },
+        "index":  index_status,
         "embedding_model": "BAAI/bge-base-en-v1.5",
         "reranker_model":  "BAAI/bge-reranker-base",
         "llm_model":       "llama-3.1-8b-instant",
@@ -235,3 +227,25 @@ async def graph_stats():
         return {"node_count": 0, "edge_count": 0, "edges": []}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ── Static frontend (Next.js static export) ──────────────────────────────────
+# Mounted LAST so every /api/* route above takes precedence. The built UI lives
+# in ui/out (see ui/next.config.ts `output: 'export'`). If it isn't present
+# (e.g. running the API standalone in dev), the mount is skipped and the API
+# still works on its own.
+
+_UI_DIR = os.getenv(
+    "UI_STATIC_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ui", "out"),
+)
+if os.path.isdir(_UI_DIR):
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=_UI_DIR, html=True), name="frontend")
+    print(f"[startup] Serving static frontend from {_UI_DIR}")
+else:
+    print(f"[startup] No static frontend at {_UI_DIR} — API-only mode.")
+
+    @app.get("/")
+    async def root_fallback():
+        return {"message": "Legal RAG API — US Tax Law (no UI built). See /docs or /api."}

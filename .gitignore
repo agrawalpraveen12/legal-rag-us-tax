@@ -20,9 +20,13 @@ env/
 .env.local
 .env.*.local
 
-# Data — raw PDFs and processed chunks are large and not committed
+# Data — raw PDFs are large and not committed
 data/raw/
-data/processed/
+# NOTE: data/processed/ (okf_chunks.jsonl, citation_graph.pkl) and
+# data/index/ (embeddings.npy, chunk_ids.json) ARE committed — the Docker
+# build (HF Spaces) needs them from the git repo. The two ~10 MB files are
+# best tracked with Git LFS (see HF_DEPLOY.md). Keep only bulky intermediates out:
+data/processed/*.tmp
 
 # Evaluation artefacts — checkpoint and per-run JSON are runtime outputs
 reports/eval_checkpoint.json

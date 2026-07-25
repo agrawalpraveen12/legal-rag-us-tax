@@ -1,4 +1,9 @@
 """
+[DEPRECATED — Elasticsearch is no longer used]
+==============================================
+Replaced by src/index/build_index.py (precomputes embeddings.npy for the
+in-process NumPy/BM25 store). Kept for reference only; not on the runtime path.
+
 P3 - Document Indexing Pipeline
 ================================
 Step 1: Load BGE-base-en-v1.5 model (local, free)

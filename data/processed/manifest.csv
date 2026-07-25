@@ -1,0 +1,103 @@
+doc_id,doc_type,title,filename,pages,chunks,total_words,section_ref,local_path
+act_sec1001,act,IRC Section 1001 - Gain or Loss on Disposition,act_sec1001.pdf,3,6,3196,IRC §1001,data\raw\acts\act_sec1001.pdf
+act_sec101,act,IRC Section 101 - Life Insurance Exclusions,act_sec101.pdf,8,19,9034,IRC §101,data\raw\acts\act_sec101.pdf
+act_sec102,act,IRC Section 102 - Gifts and Inheritances Exclusion,act_sec102.pdf,2,5,2483,IRC §102,data\raw\acts\act_sec102.pdf
+act_sec1031,act,IRC Section 1031 - Like-Kind Exchanges,act_sec1031.pdf,4,10,4977,IRC §1031,data\raw\acts\act_sec1031.pdf
+act_sec121,act,IRC Section 121 - Home Sale Exclusion,act_sec121.pdf,8,21,9828,IRC §121,data\raw\acts\act_sec121.pdf
+act_sec1221,act,IRC Section 1221 - Capital Asset Defined,act_sec1221.pdf,4,4,294,IRC §1221,data\raw\acts\act_sec1221.pdf
+act_sec132,act,IRC Section 132 - Fringe Benefits,act_sec132.pdf,9,22,10215,IRC §132,data\raw\acts\act_sec132.pdf
+act_sec151,act,IRC Section 151 - Personal Exemptions,act_sec151.pdf,4,10,4799,IRC §151,data\raw\acts\act_sec151.pdf
+act_sec162,act,IRC Section 162 - Trade or Business Expenses,act_sec162.pdf,17,42,20589,IRC §162,data\raw\acts\act_sec162.pdf
+act_sec163,act,IRC Section 163 - Interest Deduction,act_sec163.pdf,18,45,20928,IRC §163,data\raw\acts\act_sec163.pdf
+act_sec165,act,IRC Section 165 - Losses,act_sec165.pdf,10,27,12989,IRC §165,data\raw\acts\act_sec165.pdf
+act_sec167,act,IRC Section 167 - Depreciation,act_sec167.pdf,10,25,12137,IRC §167,data\raw\acts\act_sec167.pdf
+act_sec170,act,IRC Section 170 - Charitable Contributions,act_sec170.pdf,33,82,38085,IRC §170,data\raw\acts\act_sec170.pdf
+act_sec183,act,IRC Section 183 - Hobby Loss Rules,act_sec183.pdf,2,5,2373,IRC §183,data\raw\acts\act_sec183.pdf
+act_sec199A,act,IRC Section 199A - Qualified Business Income Deduction,act_sec199A.pdf,7,14,6569,IRC §199A,data\raw\acts\act_sec199A.pdf
+act_sec212,act,IRC Section 212 - Expenses for Income Production,act_sec212.pdf,4,4,294,IRC §212,data\raw\acts\act_sec212.pdf
+act_sec263,act,IRC Section 263 - Capital Expenditures,act_sec263.pdf,5,13,6094,IRC §263,data\raw\acts\act_sec263.pdf
+act_sec265,act,IRC Section 265 - Expenses for Tax-Exempt Income,act_sec265.pdf,6,13,6572,IRC §265,data\raw\acts\act_sec265.pdf
+act_sec351,act,IRC Section 351 - Transfer to Controlled Corporation,act_sec351.pdf,4,4,294,IRC §351,data\raw\acts\act_sec351.pdf
+act_sec368,act,IRC Section 368 - Corporate Reorganizations,act_sec368.pdf,4,4,294,IRC §368,data\raw\acts\act_sec368.pdf
+act_sec401,act,IRC Section 401 - Qualified Pension Plans,act_sec401.pdf,4,4,294,IRC §401,data\raw\acts\act_sec401.pdf
+act_sec408,act,IRC Section 408 - Individual Retirement Accounts,act_sec408.pdf,4,4,294,IRC §408,data\raw\acts\act_sec408.pdf
+act_sec501,act,IRC Section 501 - Tax-Exempt Organizations,act_sec501.pdf,24,57,27606,IRC §501,data\raw\acts\act_sec501.pdf
+act_sec61,act,IRC Section 61 - Gross Income Defined,act_sec61.pdf,3,8,3791,IRC §61,data\raw\acts\act_sec61.pdf
+act_sec62,act,IRC Section 62 - Adjusted Gross Income Defined,act_sec62.pdf,9,24,11349,IRC §62,data\raw\acts\act_sec62.pdf
+act_sec63,act,IRC Section 63 - Taxable Income Defined,act_sec63.pdf,5,13,6184,IRC §63,data\raw\acts\act_sec63.pdf
+act_sec6662,act,IRC Section 6662 - Accuracy-Related Penalty,act_sec6662.pdf,6,14,6685,IRC §6662,data\raw\acts\act_sec6662.pdf
+act_sec67,act,IRC Section 67 - Miscellaneous Itemized Deductions,act_sec67.pdf,2,5,2211,IRC §67,data\raw\acts\act_sec67.pdf
+act_sec68,act,IRC Section 68 - Overall Limitation on Itemized Deductions,act_sec68.pdf,3,7,3451,IRC §68,data\raw\acts\act_sec68.pdf
+act_sec7201,act,IRC Section 7201 - Tax Evasion,act_sec7201.pdf,1,2,1111,IRC §7201,data\raw\acts\act_sec7201.pdf
+failed,judgment,Failed,failed.txt,1,1,61,,data\raw\judgments\failed.txt
+judgment_01_commissioner_v_glenshaw_glass,judgment,Commissioner v. Glenshaw Glass Co. (1955),judgment_01_commissioner_v_glenshaw_glass.txt,5,5,1954,,data\raw\judgments\judgment_01_commissioner_v_glenshaw_glass.txt
+judgment_02_old_colony_trust_co_v_commissioner,judgment,Old Colony Trust Co. v. Commissioner (1929),judgment_02_old_colony_trust_co_v_commissioner.txt,8,8,3831,,data\raw\judgments\judgment_02_old_colony_trust_co_v_commissioner.txt
+judgment_03_cesarini_v_united_states,judgment,Cesarini v. United States (1969),judgment_03_cesarini_v_united_states.txt,7,7,3248,,data\raw\judgments\judgment_03_cesarini_v_united_states.txt
+judgment_04_welch_v_helvering,judgment,Welch v. Helvering (1933),judgment_04_welch_v_helvering.txt,4,4,1603,,data\raw\judgments\judgment_04_welch_v_helvering.txt
+judgment_05_commissioner_v_tellier,judgment,Commissioner v. Tellier (1966),judgment_05_commissioner_v_tellier.txt,6,6,2656,,data\raw\judgments\judgment_05_commissioner_v_tellier.txt
+judgment_06_indopco_v_commissioner,judgment,INDOPCO Inc. v. Commissioner (1992),judgment_06_indopco_v_commissioner.txt,10,10,4359,,data\raw\judgments\judgment_06_indopco_v_commissioner.txt
+judgment_07_bob_jones_university_v_united_states,judgment,Bob Jones University v. United States (1983),judgment_07_bob_jones_university_v_united_states.txt,22,22,10060,,data\raw\judgments\judgment_07_bob_jones_university_v_united_states.txt
+judgment_08_gregory_v_helvering,judgment,Gregory v. Helvering (1935),judgment_08_gregory_v_helvering.txt,4,4,1909,,data\raw\judgments\judgment_08_gregory_v_helvering.txt
+judgment_09_cottage_savings_association_v_commissioner,judgment,Cottage Savings Association v. Commissioner (1991),judgment_09_cottage_savings_association_v_commissioner.txt,11,11,5097,,data\raw\judgments\judgment_09_cottage_savings_association_v_commissioner.txt
+judgment_10_starker_v_united_states,judgment,Starker v. United States (1979),judgment_10_starker_v_united_states.txt,6,6,2372,,data\raw\judgments\judgment_10_starker_v_united_states.txt
+judgment_11_cheek_v_united_states,judgment,Cheek v. United States (1991),judgment_11_cheek_v_united_states.txt,14,14,7000,,data\raw\judgments\judgment_11_cheek_v_united_states.txt
+judgment_12_united_states_v_kirby_lumber,judgment,United States v. Kirby Lumber Co. (1931),judgment_12_united_states_v_kirby_lumber.txt,1,1,536,,data\raw\judgments\judgment_12_united_states_v_kirby_lumber.txt
+judgment_13_faridessultaneh_v_commissioner,judgment,Farid-Es-Sultaneh v. Commissioner (1947),judgment_13_faridessultaneh_v_commissioner.txt,7,7,3286,,data\raw\judgments\judgment_13_faridessultaneh_v_commissioner.txt
+judgment_14_commissioner_v_duberstein,judgment,Commissioner v. Duberstein (1960),judgment_14_commissioner_v_duberstein.txt,13,13,6597,,data\raw\judgments\judgment_14_commissioner_v_duberstein.txt
+judgment_15_crane_v_commissioner,judgment,Crane v. Commissioner (1947),judgment_15_crane_v_commissioner.txt,11,11,5328,,data\raw\judgments\judgment_15_crane_v_commissioner.txt
+judgment_16_commissioner_v_tufts,judgment,Commissioner v. Tufts (1983),judgment_16_commissioner_v_tufts.txt,16,16,7689,,data\raw\judgments\judgment_16_commissioner_v_tufts.txt
+judgment_17_arrowsmith_v_commissioner,judgment,Arrowsmith v. Commissioner (1952),judgment_17_arrowsmith_v_commissioner.txt,4,4,1764,,data\raw\judgments\judgment_17_arrowsmith_v_commissioner.txt
+judgment_18_corn_products_refining_v_commissioner,judgment,Corn Products Refining Co. v. Commissioner (1955),judgment_18_corn_products_refining_v_commissioner.txt,6,6,2566,,data\raw\judgments\judgment_18_corn_products_refining_v_commissioner.txt
+judgment_19_arkansas_best_corporation_v_commissioner,judgment,Arkansas Best Corp. v. Commissioner (1988),judgment_19_arkansas_best_corporation_v_commissioner.txt,9,9,4233,,data\raw\judgments\judgment_19_arkansas_best_corporation_v_commissioner.txt
+judgment_20_grodt_mckay_realty_v_commissioner,judgment,Grodt & McKay Realty v. Commissioner (1981),judgment_20_grodt_mckay_realty_v_commissioner.txt,22,21,10331,,data\raw\judgments\judgment_20_grodt_mckay_realty_v_commissioner.txt
+judgment_21_estate_of_franklin_v_commissioner,judgment,Estate of Franklin v. Commissioner (1976),judgment_21_estate_of_franklin_v_commissioner.txt,17,17,7936,,data\raw\judgments\judgment_21_estate_of_franklin_v_commissioner.txt
+judgment_22_united_states_v_gilmore,judgment,United States v. Gilmore (1963),judgment_22_united_states_v_gilmore.txt,15,15,7803,,data\raw\judgments\judgment_22_united_states_v_gilmore.txt
+judgment_23_commissioner_v_flowers,judgment,Commissioner v. Flowers (1946),judgment_23_commissioner_v_flowers.txt,20,20,9482,,data\raw\judgments\judgment_23_commissioner_v_flowers.txt
+judgment_24_hernandez_v_commissioner,judgment,Hernandez v. Commissioner (1989),judgment_24_hernandez_v_commissioner.txt,13,13,5980,,data\raw\judgments\judgment_24_hernandez_v_commissioner.txt
+judgment_25_benaglia_v_commissioner,judgment,Benaglia v. Commissioner (1937),judgment_25_benaglia_v_commissioner.txt,2,2,985,,data\raw\judgments\judgment_25_benaglia_v_commissioner.txt
+judgment_26_moller_v_united_states,judgment,Moller v. United States (1983),judgment_26_moller_v_united_states.txt,11,11,4743,,data\raw\judgments\judgment_26_moller_v_united_states.txt
+judgment_27_textron_inc_v_united_states,judgment,Textron Inc. v. United States (2009),judgment_27_textron_inc_v_united_states.txt,29,29,13418,,data\raw\judgments\judgment_27_textron_inc_v_united_states.txt
+judgment_28_helvering_v_bruun,judgment,Helvering v. Bruun (1940),judgment_28_helvering_v_bruun.txt,4,4,1953,,data\raw\judgments\judgment_28_helvering_v_bruun.txt
+judgment_29_davis_v_united_states,judgment,Davis v. United States (1990),judgment_29_davis_v_united_states.txt,40,40,19727,,data\raw\judgments\judgment_29_davis_v_united_states.txt
+judgment_30_commissioner_v_idaho_power,judgment,Commissioner v. Idaho Power Co. (1974),judgment_30_commissioner_v_idaho_power.txt,16,16,7291,,data\raw\judgments\judgment_30_commissioner_v_idaho_power.txt
+failed_pov,pov,Failed Pov,failed_pov.txt,2,1,121,,data\raw\pov\failed_pov.txt
+pov_crs_01_gross_income,pov,Crs Report: 01 Gross Income,pov_crs_01_gross_income.pdf,6,6,1613,,data\raw\pov\pov_crs_01_gross_income.pdf
+pov_crs_02_business_expense,pov,Crs Report: 02 Business Expense,pov_crs_02_business_expense.pdf,16,16,4110,,data\raw\pov\pov_crs_02_business_expense.pdf
+pov_crs_03_charitable,pov,Crs Report: 03 Charitable,pov_crs_03_charitable.pdf,5,5,1571,,data\raw\pov\pov_crs_03_charitable.pdf
+pov_crs_04_exempt_orgs,pov,Crs Report: 04 Exempt Orgs,pov_crs_04_exempt_orgs.pdf,14,14,3322,,data\raw\pov\pov_crs_04_exempt_orgs.pdf
+pov_crs_05_like_kind,pov,Crs Report: 05 Like Kind,pov_crs_05_like_kind.pdf,16,15,4136,,data\raw\pov\pov_crs_05_like_kind.pdf
+pov_crs_06_capital_gains,pov,Crs Report: 06 Capital Gains,pov_crs_06_capital_gains.pdf,9,9,2418,,data\raw\pov\pov_crs_06_capital_gains.pdf
+pov_crs_07_ira,pov,Crs Report: 07 Ira,pov_crs_07_ira.pdf,4,4,1460,,data\raw\pov\pov_crs_07_ira.pdf
+pov_crs_08_qbi,pov,Crs Report: 08 Qbi,pov_crs_08_qbi.pdf,10,10,2187,,data\raw\pov\pov_crs_08_qbi.pdf
+pov_crs_09_depreciation,pov,Crs Report: 09 Depreciation,pov_crs_09_depreciation.pdf,28,28,7658,,data\raw\pov\pov_crs_09_depreciation.pdf
+pov_crs_10_penalties,pov,Crs Report: 10 Penalties,pov_crs_10_penalties.pdf,6,6,1248,,data\raw\pov\pov_crs_10_penalties.pdf
+pov_crs_11_reorg,pov,Crs Report: 11 Reorg,pov_crs_11_reorg.pdf,23,23,6114,,data\raw\pov\pov_crs_11_reorg.pdf
+pov_crs_12_hobby_loss,pov,Crs Report: 12 Hobby Loss,pov_crs_12_hobby_loss.pdf,3,3,579,,data\raw\pov\pov_crs_12_hobby_loss.pdf
+pov_gao_01_tax_exempt,pov,Gao Report: 01 Tax Exempt,pov_gao_01_tax_exempt.pdf,53,53,15312,,data\raw\pov\pov_gao_01_tax_exempt.pdf
+pov_gao_02_likekind,pov,Gao Report: 02 Likekind,pov_gao_02_likekind.pdf,35,35,12219,,data\raw\pov\pov_gao_02_likekind.pdf
+pov_gao_03_retirement,pov,Gao Report: 03 Retirement,pov_gao_03_retirement.pdf,40,40,13134,,data\raw\pov\pov_gao_03_retirement.pdf
+pov_gao_04_penalties,pov,Gao Report: 04 Penalties,pov_gao_04_penalties.pdf,19,19,7263,,data\raw\pov\pov_gao_04_penalties.pdf
+pov_gao_05_smallbiz,pov,Gao Report: 05 Smallbiz,pov_gao_05_smallbiz.pdf,32,32,7928,,data\raw\pov\pov_gao_05_smallbiz.pdf
+pov_irs_01_sec162,pov,Irs Analysis: 01 Sec162,pov_irs_01_sec162.pdf,9,15,5906,,data\raw\pov\pov_irs_01_sec162.pdf
+pov_jct_01_tcja,pov,Jct Report: 01 Tcja,pov_jct_01_tcja.pdf,23,43,20291,,data\raw\pov\pov_jct_01_tcja.pdf
+pov_jct_02_expenditures,pov,Jct Report: 02 Expenditures,pov_jct_02_expenditures.pdf,26,49,23593,,data\raw\pov\pov_jct_02_expenditures.pdf
+pov_jct_03_charitable,pov,Jct Report: 03 Charitable,pov_jct_03_charitable.pdf,46,91,44953,,data\raw\pov\pov_jct_03_charitable.pdf
+pov_jct_04_retirement,pov,Jct Report: 04 Retirement,pov_jct_04_retirement.pdf,28,28,6788,,data\raw\pov\pov_jct_04_retirement.pdf
+pov_jct_05_corps,pov,Jct Report: 05 Corps,pov_jct_05_corps.pdf,29,29,6775,,data\raw\pov\pov_jct_05_corps.pdf
+pov_jct_06_capgains,pov,Jct Report: 06 Capgains,pov_jct_06_capgains.pdf,6,6,1395,,data\raw\pov\pov_jct_06_capgains.pdf
+pov_jct_07_penalties,pov,Jct Report: 07 Penalties,pov_jct_07_penalties.pdf,11,11,2774,,data\raw\pov\pov_jct_07_penalties.pdf
+pov_tf_01_199A,pov,Tax Foundation: 01 199A,pov_tf_01_199A.pdf,226,229,88901,,data\raw\pov\pov_tf_01_199A.pdf
+pov_tf_02_capgains,pov,Tax Foundation: 02 Capgains,pov_tf_02_capgains.pdf,119,120,46948,,data\raw\pov\pov_tf_02_capgains.pdf
+pov_tf_03_corporate,pov,Tax Foundation: 03 Corporate,pov_tf_03_corporate.pdf,27,50,23314,,data\raw\pov\pov_tf_03_corporate.pdf
+pov_tf_04_charitable,pov,Tax Foundation: 04 Charitable,pov_tf_04_charitable.pdf,22,43,20545,,data\raw\pov\pov_tf_04_charitable.pdf
+pov_tf_05_1031,pov,Tax Foundation: 05 1031,pov_tf_05_1031.pdf,27,27,6813,,data\raw\pov\pov_tf_05_1031.pdf
+tax_pub15b,tax,IRS Publication 15B - Employers Tax Guide to Fringe Benefits,tax_pub15b.pdf,36,72,35223,,data\raw\tax_docs\tax_pub15b.pdf
+tax_pub17,tax,IRS Publication 17 - Your Federal Income Tax,tax_pub17.pdf,142,362,187831,,data\raw\tax_docs\tax_pub17.pdf
+tax_pub334,tax,IRS Publication 334 - Tax Guide for Small Business,tax_pub334.pdf,57,109,50562,,data\raw\tax_docs\tax_pub334.pdf
+tax_pub463,tax,IRS Publication 463 - Travel Gift and Car Expenses,tax_pub463.pdf,62,111,52511,,data\raw\tax_docs\tax_pub463.pdf
+tax_pub526,tax,IRS Publication 526 - Charitable Contributions,tax_pub526.pdf,40,82,37551,,data\raw\tax_docs\tax_pub526.pdf
+tax_pub535,tax,IRS Publication 535 - Business Expenses,tax_pub535.pdf,57,162,82947,,data\raw\tax_docs\tax_pub535.pdf
+tax_pub544,tax,IRS Publication 544 - Sales of Business Property,tax_pub544.pdf,64,129,64651,,data\raw\tax_docs\tax_pub544.pdf
+tax_pub550,tax,IRS Publication 550 - Investment Income and Expenses,tax_pub550.pdf,117,233,115119,,data\raw\tax_docs\tax_pub550.pdf
+tax_pub590a,tax,IRS Publication 590A - IRA Contributions,tax_pub590a.pdf,62,119,55788,,data\raw\tax_docs\tax_pub590a.pdf
+tax_pub946,tax,IRS Publication 946 - How to Depreciate Property,tax_pub946.pdf,113,192,88170,,data\raw\tax_docs\tax_pub946.pdf
